@@ -1,0 +1,256 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  companies Company[]
+  affiliateProgram AffiliateProgram?
+  collaborations CompanyCollaborator[]
+
+  @@map("users")
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  subdomain   String   @unique
+  slug        String   @unique
+  businessType BusinessType
+  phoneNumber String?
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Configurações do atendimento
+  businessHours String? // JSON string com horários
+  greeting      String? // Mensagem de saudação
+  language      String  @default("pt-BR")
+  timezone      String  @default("America/Sao_Paulo")
+
+  // Relacionamentos
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId     String
+  subscription Subscription?
+  n8nWorkflow  N8nWorkflow?
+  whatsappConfig WhatsappConfig?
+  collaborators CompanyCollaborator[]
+
+  @@map("companies")
+}
+
+model CompanyCollaborator {
+  id        String   @id @default(cuid())
+  role      CollaboratorRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  @@unique([companyId, userId])
+  @@map("company_collaborators")
+}
+
+model Subscription {
+  id             String           @id @default(cuid())
+  stripeCustomerId String?        @unique
+  stripeSubscriptionId String?    @unique
+  stripePriceId  String?
+  status         SubscriptionStatus
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean      @default(false)
+  trialStart     DateTime?
+  trialEnd       DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  // Relacionamentos
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String  @unique
+  plan      Plan    @relation(fields: [planId], references: [id])
+  planId    String
+
+  @@map("subscriptions")
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  interval    PlanInterval
+  features    String[] // Array de features
+  maxContacts Int      @default(1000)
+  maxMessages Int      @default(10000)
+  isPopular   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model N8nWorkflow {
+  id          String   @id @default(cuid())
+  n8nId       String   // Removido @unique para permitir workflows compartilhados
+  name        String
+  isActive    Boolean  @default(false)
+  isShared    Boolean  @default(false) // Indica se é um workflow compartilhado
+  webhookUrl  String?
+  lastSync    DateTime?
+  config      String? // JSON string com configurações
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String  @unique
+
+  @@map("n8n_workflows")
+}
+
+model WhatsappConfig {
+  id            String   @id @default(cuid())
+  phoneNumber   String   @unique
+  apiProvider   String   // "z-api", "360dialog", "gupshup"
+  apiToken      String
+  instanceId    String?
+  webhookUrl    String?
+  isConnected   Boolean  @default(false)
+  lastHealthCheck DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relacionamentos
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String  @unique
+
+  @@map("whatsapp_configs")
+}
+
+model AffiliateProgram {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  commissionRate    Float    @default(0.30) // 30% padrão
+  recurringRate     Float    @default(0.10) // 10% recorrente
+  level             Int      @default(1)
+  totalEarnings     Float    @default(0)
+  totalReferrals    Int      @default(0)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relacionamentos
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String   @unique
+  referrals         AffiliateReferral[]
+  parentAffiliate   AffiliateProgram? @relation("AffiliateHierarchy", fields: [parentAffiliateId], references: [id])
+  parentAffiliateId String?
+  childAffiliates   AffiliateProgram[] @relation("AffiliateHierarchy")
+
+  @@map("affiliate_programs")
+}
+
+model AffiliateReferral {
+  id                String   @id @default(cuid())
+  referredEmail     String
+  subscriptionId    String?
+  commissionAmount  Float    @default(0)
+  status            ReferralStatus
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relacionamentos
+  affiliate         AffiliateProgram @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  affiliateId       String
+
+  @@map("affiliate_referrals")
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  source      String   // "stripe", "n8n", "whatsapp"
+  eventType   String
+  data        String   // JSON string
+  processed   Boolean  @default(false)
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("webhook_events")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  companyId String?
+  action    String
+  details   String? // JSON string
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+// Enums
+enum BusinessType {
+  RESTAURANT
+  MEDICAL
+  BEAUTY
+  LEGAL
+  RETAIL
+  OTHER
+}
+
+enum CollaboratorRole {
+  ADMIN
+  MANAGER
+  OPERATOR
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+}
+
+enum PlanInterval {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum ReferralStatus {
+  PENDING
+  CONVERTED
+  REJECTED
+}

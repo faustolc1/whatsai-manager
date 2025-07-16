@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "name": "whatsai-manager",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "@database-url",
+    "DIRECT_URL": "@direct-url",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "@clerk-publishable-key",
+    "CLERK_SECRET_KEY": "@clerk-secret-key",
+    "NEXT_PUBLIC_CLERK_SIGN_IN_URL": "/auth/sign-in",
+    "NEXT_PUBLIC_CLERK_SIGN_UP_URL": "/auth/sign-up",
+    "NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL": "/onboarding",
+    "NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL": "/onboarding",
+    "N8N_API_BASE_URL": "@n8n-api-base-url",
+    "N8N_API_KEY": "@n8n-api-key"
+  },
+  "regions": ["gru1"]
+}
