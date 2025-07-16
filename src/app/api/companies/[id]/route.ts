@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = auth()
@@ -14,9 +14,10 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const resolvedParams = await params
     const company = await prisma.company.findFirst({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         owner: {
           clerkId: userId
         }
@@ -45,7 +46,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = auth()
@@ -56,9 +57,10 @@ export async function PUT(
     const data = await request.json()
     const { name, businessType, phoneNumber, greeting, businessHours, logoUrl } = data
 
+    const resolvedParams = await params
     const company = await prisma.company.findFirst({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         owner: {
           clerkId: userId
         }
@@ -74,7 +76,7 @@ export async function PUT(
 
     // Atualizar dados da empresa
     const updatedCompany = await prisma.company.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: {
         ...(name && { name }),
         ...(businessType && { businessType }),
@@ -130,10 +132,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('🗑️ Deleting company:', params.id)
+    const resolvedParams = await params
+    console.log('🗑️ Deleting company:', resolvedParams.id)
     
     const { userId } = auth()
     if (!userId) {
@@ -142,7 +145,7 @@ export async function DELETE(
 
     const company = await prisma.company.findFirst({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         owner: {
           clerkId: userId
         }
@@ -173,7 +176,7 @@ export async function DELETE(
 
     // Delete company (cascade will delete related records)
     await prisma.company.delete({
-      where: { id: params.id }
+      where: { id: resolvedParams.id }
     })
 
     console.log('✅ Company deleted successfully')
