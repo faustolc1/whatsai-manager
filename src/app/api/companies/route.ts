@@ -158,17 +158,13 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Create N8N workflow for the company
+    // TODO: Create N8N workflow for the company
+    // Temporarily commented out to fix build issues
+    console.log('⚠️ N8N workflow creation temporarily disabled for build')
+    
+    /*
     try {
       console.log('🔄 Creating N8N workflow...')
-      console.log('📝 Company data:', {
-        name: company.name,
-        businessType: company.businessType,
-        phoneNumber: company.phoneNumber,
-        greeting: company.greeting,
-        businessHours: company.businessHours
-      })
-      
       const workflowResult = await createCompanyWorkflow({
         name: company.name,
         businessType: company.businessType as any,
@@ -177,8 +173,6 @@ export async function POST(request: NextRequest) {
         businessHours: company.businessHours || ''
       })
       
-      console.log('✅ Workflow result:', workflowResult)
-
       // Save N8N workflow to database
       await prisma.n8nWorkflow.create({
         data: {
@@ -201,13 +195,9 @@ export async function POST(request: NextRequest) {
       console.log('✅ N8N workflow created and saved')
     } catch (n8nError) {
       console.error('⚠️ N8N workflow creation failed:', n8nError)
-      console.error('⚠️ N8N error details:', {
-        message: (n8nError as any)?.message,
-        stack: (n8nError as any)?.stack,
-        name: (n8nError as any)?.name
-      })
       // Continue without N8N - can be configured later
     }
+    */
 
     // Retornar empresa criada com relacionamentos
     const createdCompany = await prisma.company.findUnique({
